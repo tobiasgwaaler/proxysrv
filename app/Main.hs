@@ -16,10 +16,12 @@ hostHeader = ("Host" :: CI ByteString, destination)
 
 setHostHeaderToDestination :: Request -> Request
 setHostHeaderToDestination req =
-  let oldHeaders = requestHeaders req
-      oldHeadersWithouHost = filter (\(key,_) -> key /= "Host") oldHeaders
-      newHeaders = oldHeadersWithouHost ++ [hostHeader]
-   in req {requestHeaders = newHeaders}
+  req {requestHeaders = replaceHostHeader (requestHeaders req)}
+  where replaceHostHeader =
+          map (\ header@(name, _) ->
+            case name of
+              "Host" -> hostHeader
+              _      -> header)
 
 main :: IO ()
 main = do
