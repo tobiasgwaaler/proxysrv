@@ -25,6 +25,7 @@ executable proxysrv
                      , mtl
                      , case-insensitive
                      , bytestring
+                     , wai-extra
   default-language:    Haskell2010
 
 test-suite proxysrv-test
