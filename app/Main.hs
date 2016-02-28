@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric     #-}
 
 module Main where
 
@@ -10,26 +11,36 @@ import Network.HTTP.Client (newManager, defaultManagerSettings)
 import Control.Monad.Trans (liftIO)
 import Data.CaseInsensitive (CI)
 import Data.ByteString (ByteString)
+import Data.ByteString.Char8 (pack)
+import Options.Generic
 
-destination = "www.example.com"
-hostHeader = ("Host" :: CI ByteString, destination)
+hostHeader :: ByteString -> (CI ByteString, ByteString)
+hostHeader dest = ("Host" :: CI ByteString, dest)
 
-setHostHeaderToDestination :: Request -> Request
-setHostHeaderToDestination req =
+data CLIOptions = CLIOptions { destination :: String, port :: Int }
+  deriving (Generic, Show)
+
+instance ParseRecord CLIOptions
+
+setHostHeaderToDestination :: ByteString -> Request -> Request
+setHostHeaderToDestination dest req =
   req {requestHeaders = replaceHostHeader (requestHeaders req)}
   where replaceHostHeader =
           map (\ header@(name, _) ->
             case name of
-              "Host" -> hostHeader
+              "Host" -> hostHeader dest
               _      -> header)
 
 main :: IO ()
 main = do
+  opts <- getRecord "proxysrv"
+  let dest = destination opts
+      destBS = pack dest
   manager <- newManager defaultManagerSettings
-  run 3001 $ logStdout $
+  run (port opts) $ logStdout $
     waiProxyToSettings
       (\ req -> return (WPRModifiedRequest
-                         (setHostHeaderToDestination req)
-                         (ProxyDest destination 80)))
+                         (setHostHeaderToDestination destBS req)
+                         (ProxyDest destBS 80)))
       def
       manager
